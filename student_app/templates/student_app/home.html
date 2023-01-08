@@ -1,0 +1,222 @@
+{% extends 'student_app/base.html' %}
+
+{% block main %}
+<style>
+    form {
+        width: 100%;
+        max-width: 600px;
+        padding-bottom: 1rem;
+    }
+</style>
+
+<div class="d-flex flex-column align-items-center mt-4">
+    <div class="d-flex border-bottom pb-2">
+        For restframework browsable api click. 
+        <a href="/automatic-api/students/" class="btn btn-sm btn-info mx-4">Browsable Api</a></p>
+    </div>
+    <p class="fs-2 fw-bold border-bottom">Add or Update Student Details</p>
+    <span id="id-form-errors" class="text-danger"></span>
+    <form class="border-bottom">
+        <Label for="name">Name</Label>
+        <input id="id-name" class="form-control" name="name" type="text" placeholder="Full Name" required>
+        <Label for="age">Age</Label>
+        <input id="id-age" class="form-control" name="age" type="number" placeholder="Age must be number between 4 and 25" required>
+        <Label for="address">Address</Label>
+        <input id="id-address" class="form-control" name="address" type="text" placeholder="Address in format city - ward no., district, country" required>
+        <Label for="grade">Grade</Label>
+        <input id="id-grade" class="form-control" name="grade" type="number" placeholder=" Grade must be number between 1 to 12" required>
+        <Label for="major">Major</Label>
+        <input id="id-major" class="form-control" name="major" placeholder="Major" type="text" required>
+        <input class="btn btn-sm btn-primary mt-2" type="submit" value="Submit">
+    </form>
+
+    <div id="students-wrapper" class="d-none mt-4">
+        <table class="table">
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Age</th>
+                    <th scope="col">Address</th>
+                    <th scope="col">Grade</th>
+                    <th scope="col">Major</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+
+    getStudents()
+
+    function getStudents() {
+        let wrapper = document.getElementById("students-wrapper")
+        let tableBody = document.getElementsByTagName("tbody")[0]
+        let studentListUrl = 'http://127.0.0.1:8025/student-list/'
+        fetch(studentListUrl)
+        .then((response) => response.json())
+        .then(function(data) {
+            // console.log(data)
+
+            var list = data
+            wrapper.classList.remove("d-none")
+            tableBody.innerHTML = ""
+            for (var i in list) {
+                let tableRow = `
+                    <tr>
+                        <td>${data[i]["name"]}</td>
+                        <td>${data[i]["age"]}</td>
+                        <td>${data[i]["address"]}</td>
+                        <td>${data[i]["grade"]}</td>
+                        <td>${data[i]["major"]}</td>
+                        <td> 
+                            <button class="btn btn-sm btn-info update">Update</button>
+                            <button class="btn btn-sm btn-danger delete">Delete</button>
+                        </td>
+                    </tr>
+                `
+                tableBody.insertAdjacentHTML("beforeend", tableRow)
+
+                let deleteBtn = document.getElementsByClassName("delete")[i]
+                deleteBtn.addEventListener("click", function(student){
+                    return function() {
+                        deleteStudent(student)
+                    }
+                }(data[i]))
+
+                let updateBtn = document.getElementsByClassName("update")[i]
+                updateBtn.addEventListener("click", function (student) {
+                    return function () {
+                        updateStudent(student)
+                    }
+                }(data[i]))
+            }
+        })
+        .catch((error) => {
+            console.log(error)
+            alert(error.message)
+        })
+    }
+
+    function deleteStudent(student) {
+        // console.log(student)
+
+        let url = `http://127.0.0.1:8025/student-delete/${student['id']}/`
+        fetch(url, {
+            method: "DELETE",
+            headers: {
+                'Content-type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            }
+        })
+        .then((response) => {
+            getStudents()
+        })
+        .catch((error) => {
+            console.log(error)
+            alert(error)
+        })
+    }
+
+    function updateStudent(student) {
+        // console.log(student)
+
+        let url = `http://127.0.0.1:8025/student-update/${student['id']}/`
+
+        let newData = {}
+        let name = document.getElementById("id-name").value
+        let age = document.getElementById("id-age").value
+        let address = document.getElementById("id-address").value
+        let grade = document.getElementById("id-grade").value
+        let major = document.getElementById("id-major").value
+
+        if (!name == "") {newData["name"] = name}
+        if (!age == "") { newData["age"] = age }
+        if (!address == "") { newData["address"] = address }
+        if (!grade == "") { newData["grade"] = grade }
+        if (!major == "") { newData["major"] = major }
+
+        fetch(url, {
+            method: "POST",
+            headers: {
+                'Content-type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify(newData)
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            document.getElementById("id-form-errors").innerText = ""
+            if (data.name && data.age && data.address && data.grade && data.major) {
+                console.log(data)
+                getStudents()
+                document.getElementsByTagName("form")[0].reset()
+            }
+            else {
+                let message = ""
+                if (data.name) message = message + " " + data.name[0].toString()
+                if (data.age) message = message + " " + data.age[0].toString()
+                if (data.address) message = message + " " + data.address[0]
+                if (data.grade) message = message + " " + data.grade[0]
+                if (data.major) message = message + " " + data.major[0]
+                document.getElementById("id-form-errors").innerText = message
+            }
+        })
+        .catch((error) => {
+            console.log(error)
+            alert(error)
+        })
+        
+    }
+
+    let form = document.getElementsByTagName("form")[0]
+    form.addEventListener("submit", function(e) {
+        e.preventDefault()
+        let name = document.getElementById("id-name").value
+        let age = document.getElementById("id-age").value
+        let address = document.getElementById("id-address").value
+        let grade = document.getElementById("id-grade").value
+        let major = document.getElementById("id-major").value
+
+        let url = "http://127.0.0.1:8025/student-create/"
+        fetch(url, {
+            method: "POST",
+            headers: {
+                'Content-type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify({
+                "name": name,
+                "age": age,
+                "address": address,
+                "grade": grade,
+                "major": major
+            })
+        })
+        .then((response) => response.json())
+        .then(data => {
+            document.getElementById("id-form-errors").innerText = ""
+            if (data.name && data.age && data.address && data.grade && data.major) {
+                console.log(data)
+                getStudents()
+                document.getElementsByTagName("form")[0].reset()
+            }
+            else {
+                let message = ""
+                if (data.name) message = message + " " + data.name[0].toString()
+                if (data.age) message = message + " " + data.age[0].toString()
+                if (data.address) message = message + " " + data.address[0]
+                if (data.grade) message = message + " " + data.grade[0]
+                if (data.major) message = message + " " + data.major[0]
+                document.getElementById("id-form-errors").innerText = message
+            }
+        })
+        .catch((error) => {
+            console.log(error)
+            alert(error)
+        })
+    })
+</script>
+{% endblock main %}
